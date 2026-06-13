@@ -6,6 +6,26 @@ const db = new sqlite3.Database('./videogames.db', (err) => {
     } else {
         console.log('Connection established.');
     }
+
+        db.serialize(() => {
+            
+            db.run(`CREATE TABLE IF NOT EXISTS platform (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                company TEXT NOT NULL
+            )`);
+
+            db.run(`CREATE TABLE IF NOT EXISTS videogame (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                genre TEXT,
+                release_year INTEGER,
+                platform_id INTEGER,
+                FOREIGN KEY(platform_id) REFERENCES platform(id)
+            )`);
+        });
 });
+
+
 
 module.exports = db;
