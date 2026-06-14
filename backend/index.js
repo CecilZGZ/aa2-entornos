@@ -7,7 +7,7 @@ const app = express();
 const PORT = 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 const checkValidation = (req, res, next) => {
     const errors = validationResult(req);
@@ -58,47 +58,90 @@ app.delete('/api/platforms/:id', (req, res) => {
 });
 
 app.post('/api/videogames', [
-    body('title').notEmpty().withMessage('Please, indicate a title.'),
-    body('platform_id').isInt().withMessage('Please, indicate a numerical ID.'),
-    checkValidation
+    body('title').notEmpty().withMessage('Field "title" is compulsory'),
+    body('platform_id').isInt().withMessage('Platform ID is compulsory')
 ], (req, res) => {
-    const { title, genre, release_year, platform_id } = req.body;
-    const sql = 'INSERT INTO videogame (title, genre, release_year, platform_id) VALUES (?, ?, ?, ?)';
-    db.run(sql, [title, genre, release_year, platform_id], function(err) {
-        if (err) return res.status(500).json({ error: err.message});
-        res.status(201).json({ id: this.lastID, title, genre, release_year, platform_id });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errores: errors.array() });
+
+    const { title, genre, release_year, platform_id, store_id, image } = req.body;
+    
+    db.run(`INSERT INTO videogame (title, genre, release_year, platform_id, store_id, image) VALUES (?, ?, ?, ?, ?, ?)`, 
+    [title, genre, release_year, platform_id, store_id, image], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ id: this.lastID });
     });
 });
 
 app.get('/api/videogames', (req, res) => {
-    const sql = `
-        SELECT videogame.*, platform.name
-        FROM videogame
-        LEFT JOIN platform ON videogame.platform_id = platform.id
-    `;
-    db.all(sql, [], (err, rows) => {
+    db.all("SELECT * FROM videogame", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
 
 app.put('/api/videogames/:id', [
-    body('title').notEmpty().withMessage('Please, indicate a title.'),
-    body('platform_id').isInt().withMessage('Please, indicate a numerical ID.'),
-    checkValidation
+    body('title').notEmpty().withMessage('Field "Title" is compulsory'),
+    body('platform_id').isInt().withMessage('Platform ID is compulsory')
 ], (req, res) => {
-    const { title, genre, release_year, platform_id } = req.body;
-    const sql = 'UPDATE videogame SET title = ?, genre = ?, release_year = ?, platform_id = ? WHERE id = ?';
-    db.run(sql, [title, genre, release_year, platform_id, req.params.id], function(err) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errores: errors.array() });
+
+    const { title, genre, release_year, platform_id, store_id, image } = req.body;
+    
+    db.run(`UPDATE videogame SET title = ?, genre = ?, release_year = ?, platform_id = ?, store_id = ?, image = ? WHERE id = ?`, 
+    [title, genre, release_year, platform_id, store_id, image, req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Game updated.' });
+        res.json({ message: 'Game updated' });
     });
 });
 
 app.delete('/api/videogames/:id', (req, res) => {
-    db.run('DELETE FROM videogame WHERE id = ?', req.params.id, function(err) {
+    db.run(`DELETE FROM videogame WHERE id = ?`, req.params.id, function(err) {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Videogame deleted.' });
+        res.json({ message: 'Game deleted' });
+    });
+});
+
+app.get('/api/stores', (req, res) => {
+    db.all("SELECT * FROM store", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/stores', [
+    body('name').notEmpty().withMessage('Field "Name" is compulsory'),
+    body('format').notEmpty().withMessage('Field "Format" is compulsory')
+], (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errores: errors.array() });
+
+    const { name, format } =req.body;
+    db.run(`INSERT INTO store (name, format) VALUES (?, ?)`, [name, format], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ id: this.lastID, name, format });
+    });
+});
+
+app.put('/api/stores/:id', [
+    body('name').notEmpty().withMessage('Field "Name" is compulsory'),
+    body('format').notEmpty().withMessage('Field "Format" is compulsory')
+], (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errores : errors.array() });
+
+    const { name, format } = req.body;
+    db.run(`UPDATE store SET name = ?, format = ? WHERE id = ?`, [name, format, req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Store updated' });
+    }) ;
+});
+
+app.delete('/api/stores/:id', (req, res) => {
+    db.run(`DELETE FROM store WHERE id = ?`, req.params.id, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Store deleted' });    
     });
 });
 
